@@ -2,6 +2,7 @@ import os
 import folder_paths
 import requests
 import re
+import tqdm
 
 class CivitaiDownloader:
     
@@ -37,7 +38,7 @@ class CivitaiDownloader:
         try:
             if re.match(r"^(https:\/\/civitai.com\/api\/download\/models\/\d+\?)?\w+\=\w+(\&\w+\=\w+)*$", model_url):
                 # This case is for full params
-                r = requests.get(model_url+f"&token={api_key}")
+                r = requests.get(model_url+f"&token={api_key}", stream = True)
                 if not r.status_code == 200:
                     raise ValueError(f"Download failed with http code {r.status_code}")
                     
@@ -51,13 +52,24 @@ class CivitaiDownloader:
                     else:
                         raise ValueError("You did not name your file, nor did cvt...")
                         
+                # Get content-length for clac
+                file_size = r.headers['content-length'] if 'content-length' in r.headers else 0
+
+                chunk_size = 1024*1024
+
+                progress_bar = tqdm(total=file_size, unit='iB', unit_scale=True)
+
                 with open(os.path.join(folder_paths.models_dir, save_dir, file_name), 'xb') as f:
                     for chunk in r.iter_content(chunk_size=1024*1024):
+                        progress_bar.update(len(chunk))
                         f.write(chunk)
+
+                if file_size != 0 and progress_bar.n != file_size:
+                    raise RuntimeError("Uknown Issue Occured")
                     
             elif re.match(r"^(https:\/\/civitai.com\/api\/download\/models\/\d+)?$", model_url):
                 # This case no extra params
-                r = requests.get(model_url+f"?token={api_key}")
+                r = requests.get(model_url+f"?token={api_key}", stream = True)
                 if not r.status_code == 200:
                     raise ValueError(f"Download failed with http code {r.status_code}")
                     
@@ -70,26 +82,37 @@ class CivitaiDownloader:
                             raise ValueError("You did not name your file, nor did cvt...")
                     else:
                         raise ValueError("You did not name your file, nor did cvt...")
+
+                # Get content-length for clac
+                file_size = r.headers['content-length'] if 'content-length' in r.headers else 0
+
+                chunk_size = 1024*1024
+
+                progress_bar = tqdm(total=file_size, unit='iB', unit_scale=True)
+
                 with open(os.path.join(folder_paths.models_dir, save_dir, file_name), 'xb') as f:
-                    for chunk in r.iter_content(chunk_size=1024*1024):
+                    for chunk in r.iter_content(chunk_size=chunk_size):
+                        progress_bar.update(len(chunk))
                         f.write(chunk)
-            
+
+                if file_size != 0 and progress_bar.n != file_size:
+                    raise RuntimeError("Uknown Issue Occured")
             else:
-                raise RuntimeError("What was going on?")
+                raise RuntimeError("Invalid Address Given")
         
-            return f"Model successfully downloaded into {os.path.join(folder_paths.models_dir, save_dir, file_name)}"
+            return (f"Model successfully downloaded into {os.path.join(folder_paths.models_dir, save_dir, file_name)}",)
         
         except FileNotFoundError:
-            return "file not found"
+            return ("file not found",)
         
         except ValueError as e:
-            return f"download failed due to {e}"
+            return (f"download failed due to {e}",)
             
         except RuntimeError as e:
-            return "idk..."
+            return ("idk...",)
             
         except:
-            return "idk...idk..."
+            return ("idk...idk...",)
 
 
 NODE_CLASS_MAPPINGS = {

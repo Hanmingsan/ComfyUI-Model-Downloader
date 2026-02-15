@@ -115,10 +115,3 @@ class CivitaiDownloader:
             return ("idk...idk...",)
 
 
-NODE_CLASS_MAPPINGS = {
-    "CivitaiDownloader": CivitaiDownloader
-}
-
-NODE_DISPLAY_NAME_MAPPINGS = {
-    "CivitaiDownloader": "Civitai Model Downloader"
-}
